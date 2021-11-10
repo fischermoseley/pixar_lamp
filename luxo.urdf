@@ -6,9 +6,60 @@
   <material name="black">
     <color rgba="0 0 0 1" />
   </material>
-  <material name="MITred">
+  <material name="MIT_red">
     <color rgba=".6 .2 .2 1" />
   </material>
+  <material name="desert_sand">
+    <color rgba="0.9297 0.7930 0.6758 1" />
+  </material>
+
+  <link name="ground">
+    <inertial>
+      <mass value="1"/>
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.5"/>
+      <geometry>
+        <box size="10 10 1"/>
+      </geometry>
+      <material name="desert_sand" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.5"/>
+      <geometry>
+        <box size="10 10 1"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="world_ground_weld" type="fixed">
+    <parent link="world" />
+    <child link="ground" />
+  </joint>
+
+  <link name="rail">
+    <inertial>
+      <mass value="1"/>
+      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0.5"/>
+      <geometry>
+        <cylinder length="1" radius=".01" />
+      </geometry>
+      <material name="desert_sand" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.5"/>
+      <geometry>
+        <cylinder length="1" radius=".01" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="world_rail_weld" type="fixed">
+    <parent link="world" />
+    <child link="rail" />
+  </joint>
 
   <link name="base">
     <inertial>
@@ -17,7 +68,7 @@
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0" />
     </inertial>
   </link>
-  <joint name="base_weld" type="fixed">
+  <joint name="world_base_weld" type="fixed">
     <parent link="world" />
     <child link="base" />
   </joint>
@@ -40,7 +91,7 @@
       <geometry>
         <sphere radius=".1"/>
       </geometry>
-      <material name="MITred" />
+      <material name="MIT_red" />
     </visual>
   </link>
   <joint name="shoulder" type="continuous">
@@ -73,7 +124,7 @@
       <geometry>
         <sphere radius=".1"/>
       </geometry>
-      <material name="MITred" />
+      <material name="MIT_red" />
     </visual>
   </link>
   <joint name="elbow" type="continuous">
