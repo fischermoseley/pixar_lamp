@@ -19,14 +19,14 @@
       <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
     </inertial>
     <visual>
-      <origin xyz="0 0 -0.5"/>
+      <origin xyz="0 0 -2.5"/>
       <geometry>
         <box size="10 10 1"/>
       </geometry>
       <material name="desert_sand" />
     </visual>
     <collision>
-      <origin xyz="0 0 -0.5"/>
+      <origin xyz="0 0 -2.5"/>
       <geometry>
         <box size="10 10 1"/>
       </geometry>
@@ -43,18 +43,12 @@
       <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
     </inertial>
     <visual>
-      <origin xyz="0 0 0.5"/>
+      <origin xyz="0 0 -1"/>
       <geometry>
-        <cylinder length="1" radius=".01" />
+        <cylinder length="2" radius=".05" />
       </geometry>
       <material name="desert_sand" />
     </visual>
-    <collision>
-      <origin xyz="0 0 0.5"/>
-      <geometry>
-        <cylinder length="1" radius=".01" />
-      </geometry>
-    </collision>
   </link>
   <joint name="world_rail_weld" type="fixed">
     <parent link="world" />
@@ -64,13 +58,15 @@
   <link name="base">
     <inertial>
       <origin xyz="0 0 0" />
-      <mass value="0.01" />
+      <mass value="5" />
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0" />
     </inertial>
   </link>
-  <joint name="world_base_weld" type="fixed">
-    <parent link="world" />
+  <joint name="rail_base_prismatic" type="prismatic">
+    <parent link="rail" />
     <child link="base" />
+    <origin xyz="0 0 0"/>
+    <axis xyz = "0 0 1"/>
   </joint>
 
   <link name="upper_arm">
@@ -93,6 +89,12 @@
       </geometry>
       <material name="MIT_red" />
     </visual>
+    <collision>
+      <origin xyz="0 0 -1"/>
+      <geometry>
+        <sphere radius="0.1" />
+      </geometry>
+    </collision>
   </link>
   <joint name="shoulder" type="continuous">
     <parent link="base"/>
@@ -126,6 +128,12 @@
       </geometry>
       <material name="MIT_red" />
     </visual>
+    <collision>
+      <origin xyz="0 0 -1"/>
+      <geometry>
+        <sphere radius="0.1" />
+      </geometry>
+    </collision>
   </link>
   <joint name="elbow" type="continuous">
     <parent link="upper_arm"/>
