@@ -8,6 +8,7 @@
 
 class VescUart
 {
+  public:
 	/** Struct to store the telemetry data returned by the VESC */
 	struct dataPackage {
 		float tempFET;
@@ -32,7 +33,6 @@ class VescUart
 	};
 
 
-	public:
 		/**
 		 * @brief      Class constructor
 		 */
