@@ -91,8 +91,7 @@ title('Center of Mass Vel. Trajectory')
 
 figure(2)  % control input profile
 ctrl_t = linspace(0, optimal_ctrl.tf, 50);
-ctrl_pt1_t = linspace(0, optimal_ctrl.tf, length(optimal_ctrl.T1));
-ctrl_pt2_t = linspace(0, optimal_ctrl.tf, length(optimal_ctrl.T2));
+ctrl_pt_t = linspace(0, optimal_ctrl.tf, length(optimal_ctrl.T1));
 
 for i=1:length(ctrl_t)
     ctrl1_input(i) = BezierCurve(optimal_ctrl.T1,ctrl_t(i)/optimal_ctrl.tf);
@@ -101,16 +100,16 @@ end
 hold on
 plot(ctrl_t, ctrl1_input);
 plot(ctrl_t, ctrl2_input);
-plot(ctrl_pt1_t, optimal_ctrl.T1, 'o');
-plot(ctrl_pt2_t, optimal_ctrl.T2, 'm');
+plot(ctrl_pt_t, optimal_ctrl.T1, 'o');
+plot(ctrl_pt_t, optimal_ctrl.T2, 'x');
 hold off
 xlabel('time (s)')
 ylabel('torque (Nm)')
 title('Control Input Trajectory')
-axis([0 0.45 0 2]);
+axis([0 0.45 -3 3]);
 
 %% Step 6: Run the animation
 figure(3)                   % get the coordinates of the points to animate
-speed = .25;                % set animation speed
+speed = .1;                 % set animation speed
 cla                         % clear axes
 animate_simple(t,z,p,speed) % run animation
