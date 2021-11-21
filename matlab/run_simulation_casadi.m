@@ -1,20 +1,5 @@
 clear all; close all; clc;
-%%
-
-% We can organize our code by filing things in different folders.  These
-% folders need to be added to the Matlab path so that it can run the files
-% inside them even when they are not the current folder listed at the top
-% of the Matlab window.  For more information about the current folder, see
-% http://www.mathworks.com/help/matlab/matlab_env/understanding-file-locations-in-matlab.html
-% For more information about the Matlab path, see
-% http://www.mathworks.com/help/matlab/matlab_env/what-is-the-matlab-search-path.html
-setpath                                     % add AutoDerived, Modeling, and Visualization folders to Matlab path
-
-%% Step 0: Setup Casadi
-% 1) Download the casadi package for your operating system from https://web.casadi.org/get/
-% 2) Unzip the folder, rename it "casadi", and place it in this directory
-% 3) Familiarize yourself with casadi by reading (at least) Chapters 1-3, 9
-% of https://web.casadi.org/docs/
+setpath % add AutoDerived, Modeling, and Visualization folders to Matlab path
 addpath(genpath('casadi'))
 
 %% Step 1: Setup the Optimization
@@ -23,7 +8,7 @@ opti = casadi.Opti();
 
 % Declare Optimization variables
 ctrl.tf = opti.variable();    % Duration of control
-ctrl.T  = opti.variable(3,1); % Control values
+ctrl.T  = opti.variable(5,1); % Control values
 
 % Time discretization
 N.ctrl   = 25; % number of dynamics timesteps where ctrl is applied
@@ -32,7 +17,7 @@ N.ctrl   = 25; % number of dynamics timesteps where ctrl is applied
 p  = parameters(); % get robot-specific parameters from file
 z0 = [0; pi/6; 0 ;0];
 
-%% Step 3: Build Objective function
+%% Step 2: Build Objective function
 % It is very easy to add an objective function to a casadi optimization.
 % Simply use the opti.minimize() function
 % Note: Using these function overwrites the last time it was used, so only use it once 
@@ -47,17 +32,14 @@ COM = COM_jumping_leg(zout,p);
 opti.minimize(-COM(4,N.ctrl));
 
 
-%% Step 2: Add constraints
-% Adding constraints is likewise very simple, just use the
-% opti.subject_to() function
-
-% Add lower and upper bounds
+%% Step 3: Add constraints
+% Bounding box on flight time/joint torques
 opti.subject_to(ctrl.tf >= 0.1);
 opti.subject_to(ctrl.tf <= 0.6);
-opti.subject_to(ctrl.T >= -2*ones(3,1));
-opti.subject_to(ctrl.T <= 2*ones(3,1) );
+opti.subject_to(ctrl.T >= -2*ones(5,1));
+opti.subject_to(ctrl.T <= 2*ones(5,1) );
 
-% Leg angle must stay within bounds
+% Bounding box on leg angle
 for i = 1:N.ctrl
     opti.subject_to(zout(2,i) <= pi/2);
     opti.subject_to(zout(2,i) >= 0);
@@ -71,14 +53,10 @@ p_opts = struct('expand',false);
 opti.solver('ipopt',p_opts);
 
 %% Step 4: Provide Initial Guess & Run the optimization
-% Setting the initial guess is simple, just use opti.set_initial() for each
-% of your optimization variables
-
 % Initial guess
 opti.set_initial(ctrl.tf,0.35);
-opti.set_initial(ctrl.T,[0. 1.0 1.0]);
+opti.set_initial(ctrl.T,[0. 1.0 1.0 1.0 1.0]);
 
-% Solve the Optimization
 sol = opti.solve();
 
 % Parse solution
@@ -86,7 +64,7 @@ tf = sol.value(ctrl.tf)+0.5;          % simulation final time
 optimal_ctrl.tf = sol.value(ctrl.tf); % control final time
 optimal_ctrl.T  = sol.value(ctrl.T);  % control values
 
-%% Step 5: Simulate and Visualize the Result (same as before mostly)
+%% Step 5: Simulate and Visualize the Result
 [t z u indices] = hybrid_simulation_sol(z0,optimal_ctrl,p,[0 tf]); % run simulation
 
 figure(1)
@@ -118,9 +96,8 @@ ylabel('torque (Nm)')
 title('Control Input Trajectory')
 axis([0 0.45 0 2]);
 
-%%
-% Run the animation
-figure(3)                          % get the coordinates of the points to animate
-speed = .25;                                 % set animation speed
-cla                                         % clear axes
-animate_simple(t,z,p,speed)                 % run animation
+%% Step 6: Run the animation
+figure(3)                   % get the coordinates of the points to animate
+speed = .25;                % set animation speed
+cla                         % clear axes
+animate_simple(t,z,p,speed) % run animation
