@@ -8,14 +8,15 @@ opti = casadi.Opti();
 
 % Declare Optimization variables
 ctrl.tf = opti.variable();    % Duration of control
-ctrl.T  = opti.variable(5,1); % Control values
+ctrl.T1  = opti.variable(5,1); % Control values for elbow torques
+ctrl.T2  = opti.variable(5,1); % Control values for shoulder torques
 
 % Time discretization
 N.ctrl   = 25; % number of dynamics timesteps where ctrl is applied
 
 % Set parameters         
 p  = parameters(); % get robot-specific parameters from file
-z0 = [0; pi/6; 0 ;0];
+z0 = [0; pi/6; -pi/6; 0; 0; 0];
 
 %% Step 2: Build Objective function
 % It is very easy to add an objective function to a casadi optimization.
@@ -36,13 +37,19 @@ opti.minimize(-COM(4,N.ctrl));
 % Bounding box on flight time/joint torques
 opti.subject_to(ctrl.tf >= 0.1);
 opti.subject_to(ctrl.tf <= 0.6);
-opti.subject_to(ctrl.T >= -2*ones(5,1));
-opti.subject_to(ctrl.T <= 2*ones(5,1) );
+opti.subject_to(ctrl.T1 >= -2*ones(5,1));
+opti.subject_to(ctrl.T1 <= 2*ones(5,1) );
+opti.subject_to(ctrl.T2 >= -2*ones(5,1));
+opti.subject_to(ctrl.T2 <= 2*ones(5,1) );
 
 % Bounding box on leg angle
 for i = 1:N.ctrl
+    % shoulder
     opti.subject_to(zout(2,i) <= pi/2);
     opti.subject_to(zout(2,i) >= 0);
+    % elbow
+    opti.subject_to(zout(3,i) <= pi/2);
+    opti.subject_to(zout(3,i) >= -pi/2);
 end
 
 %% Step 3: Setup the solver options
@@ -55,14 +62,16 @@ opti.solver('ipopt',p_opts);
 %% Step 4: Provide Initial Guess & Run the optimization
 % Initial guess
 opti.set_initial(ctrl.tf,0.35);
-opti.set_initial(ctrl.T,[0. 1.0 1.0 1.0 1.0]);
+opti.set_initial(ctrl.T1,[0. 1.0 1.0 1.0 1.0]);
+opti.set_initial(ctrl.T2,[0. 1.0 1.0 1.0 1.0]);
 
 sol = opti.solve();
 
 % Parse solution
 tf = sol.value(ctrl.tf)+0.5;          % simulation final time
 optimal_ctrl.tf = sol.value(ctrl.tf); % control final time
-optimal_ctrl.T  = sol.value(ctrl.T);  % control values
+optimal_ctrl.T1  = sol.value(ctrl.T1);  % control values
+optimal_ctrl.T2  = sol.value(ctrl.T2);
 
 %% Step 5: Simulate and Visualize the Result
 [t z u indices] = hybrid_simulation_sol(z0,optimal_ctrl,p,[0 tf]); % run simulation
@@ -82,14 +91,18 @@ title('Center of Mass Vel. Trajectory')
 
 figure(2)  % control input profile
 ctrl_t = linspace(0, optimal_ctrl.tf, 50);
-ctrl_pt_t = linspace(0, optimal_ctrl.tf, length(optimal_ctrl.T));
+ctrl_pt1_t = linspace(0, optimal_ctrl.tf, length(optimal_ctrl.T1));
+ctrl_pt2_t = linspace(0, optimal_ctrl.tf, length(optimal_ctrl.T2));
 
 for i=1:length(ctrl_t)
-    ctrl_input(i) = BezierCurve(optimal_ctrl.T,ctrl_t(i)/optimal_ctrl.tf);
+    ctrl1_input(i) = BezierCurve(optimal_ctrl.T1,ctrl_t(i)/optimal_ctrl.tf);
+    ctrl2_input(i) = BezierCurve(optimal_ctrl.T2,ctrl_t(i)/optimal_ctrl.tf);
 end
 hold on
-plot(ctrl_t, ctrl_input);
-plot(ctrl_pt_t, optimal_ctrl.T, 'o');
+plot(ctrl_t, ctrl1_input);
+plot(ctrl_t, ctrl2_input);
+plot(ctrl_pt1_t, optimal_ctrl.T1, 'o');
+plot(ctrl_pt2_t, optimal_ctrl.T2, 'm');
 hold off
 xlabel('time (s)')
 ylabel('torque (Nm)')
