@@ -12,11 +12,11 @@ ctrl.T1  = opti.variable(5,1); % Control values for elbow torques
 ctrl.T2  = opti.variable(5,1); % Control values for shoulder torques
 
 % Time discretization
-N.ctrl   = 25; % number of dynamics timesteps where ctrl is applied
+N.ctrl   = 50; % number of dynamics timesteps where ctrl is applied
 
 % Set parameters         
 p  = parameters(); % get robot-specific parameters from file
-z0 = [0; pi/6; -pi/6; 0; 0; 0];
+z0 = [0; pi/2; 0; 0; 0; 0];
 
 %% Step 2: Build Objective function
 % It is very easy to add an objective function to a casadi optimization.

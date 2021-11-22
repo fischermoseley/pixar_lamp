@@ -15,7 +15,7 @@ ihat = [1; 0; 0];
 jhat = [0; 1; 0];
 khat = cross(ihat,jhat);
 er1hat = cos(th1)*ihat + sin(th1) * jhat;
-er2hat = cos(th2)*ihat + sin(th2) * jhat;
+er2hat = cos(th1 + th2)*ihat + sin(th1 + th2) * jhat;
 
 rf = y*jhat;
 rcm1 = rf+c1*er1hat;
