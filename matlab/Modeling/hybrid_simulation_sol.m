@@ -17,9 +17,11 @@ function [tout zout uout indices] = hybrid_simulation_sol(z0,ctrl,p,tspan)
         zout(1:3,i+1) = zout(1:3,i) + zout(4:6, i+1)*dt;
         uout(:,i+1) = u; 
         
-        if(zout(1, i+1) > 0 && iphase == 1) % jump
+        %if(zout(1, i+1) > 0 && iphase == 1) % jump
+        %    iphase = 2;
+        if(t > ctrl.tf)
             iphase = 2;
-        elseif(zout(1,i+1) < 0 && iphase == 2) % max height
+        elseif(zout(4,i+1) < 0 && iphase == 2) % max height
             iphase = 3;
         end
         iphase_list(i+1) = iphase;
@@ -68,22 +70,27 @@ end
 
 %% Control
 function u = control_laws(t,z,ctrl,iphase)
-    u1 = BezierCurve(ctrl.T1, t/ctrl.tf);
-    u2 = BezierCurve(ctrl.T2, t/ctrl.tf);
-    u = [u1, u2];
+    %u1 = BezierCurve(ctrl.T1, t/ctrl.tf);
+    %u2 = BezierCurve(ctrl.T2, t/ctrl.tf);
+    %u = [u1, u2];
     
-%    if iphase == 1
-%        u1 = BezierCurve(ctrl.T1, t/ctrl.tf);
-%        u2 = BezierCurve(ctrl.T2, t/ctrl.tf);
-%        u = [u1, u2];
-%    else
-%        th = z(2,:);            % leg angle
-%        dth = z(4,:);           % leg angular velocity
-%
-%        thd = pi/4;             % desired leg angle
-%        k = 5;                  % stiffness (N/rad)
-%        b = .5;                 % damping (N/(rad/s))
-%
-%        u = -k*(th-thd) - b*dth;% apply PD control
-%    end
+    if iphase == 1
+        u1 = BezierCurve(ctrl.T1, t/ctrl.tf);
+        u2 = BezierCurve(ctrl.T2, t/ctrl.tf);
+        u = [u1, u2];
+    else
+        th1 = z(2,:);            % leg angle
+        th2 = z(3,:);
+        dth1 = z(5,:);           % leg angular velocity
+        dth2 = z(6,:);
+
+        th1d = pi/4;             % desired leg angle
+        th2d = pi/2;
+        k = 5;                  % stiffness (N/rad)
+        b = .5;                 % damping (N/(rad/s))
+
+        u1 = -k*(th1-th1d) - b*dth1;% apply PD control
+        u2 = -k*(th2-th2d) - b*dth2;% apply PD control
+        u = [u1, u2];        
+    end
 end
