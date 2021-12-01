@@ -7,8 +7,10 @@
 VescUart th1_vesc;
 VescUart th2_vesc;
 
-VescUart::dataPackage th1_telemetry[trajectory_length];
-VescUart::dataPackage th2_telemetry[trajectory_length];
+float current_limit = 60;
+
+VescUart::dataPackage th1_telemetry[dynamic_trajectory_length];
+VescUart::dataPackage th2_telemetry[dynamic_trajectory_length];
 
 Encoder th1_encoder(7,8);
 Encoder th2_encoder(5,6);
@@ -33,7 +35,7 @@ float th2_current = 0;
 void send_telemetry_to_computer() {
   VescUart::dataPackage data;
   Serial.println("Sending telemetry...");
-  for(uint16_t i=0; i < trajectory_length; i++) {
+  for(uint16_t i=0; i < dynamic_trajectory_length; i++) {
     data = th1_telemetry[i];
     Serial.print(i);
     Serial.print(',');
@@ -111,10 +113,11 @@ void loop() {
     th1_current = k*(th1_desired - th1) + d*(-dth1);
     th2_current = k*(th2_desired - th2) + d*(-dth2);
 
-    if(th1_current >  60) th1_current =  60;
-    if(th1_current < -60) th1_current = -60;
-    if(th2_current > 60)  th2_current =  60;
-    if(th2_current < -60) th2_current = -60;
+    // set hard currnet limit
+    if(th1_current >  current_limit) th1_current =  current_limit;
+    if(th1_current < -current_limit) th1_current = -current_limit;
+    if(th2_current >  current_limit) th2_current =  current_limit;
+    if(th2_current < -current_limit) th2_current = -current_limit;
 
     th1_vesc.setCurrent(-th1_current);    
     th2_vesc.setCurrent(-th2_current);
