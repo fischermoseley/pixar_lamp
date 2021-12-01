@@ -8,7 +8,7 @@ VescUart elbow;
 VescUart::dataPackage shoulder_telemetry[trajectory_length];
 VescUart::dataPackage elbow_telemetry[trajectory_length];
 
-Encoder shoulder_encoder(8,9);
+Encoder shoulder_encoder(7,8);
 Encoder elbow_encoder(5,6);
 
 int32_t initial_shoulder_angle = 0;
@@ -22,7 +22,7 @@ int32_t current_elbow_angle = 0;
 float shoulder_velocity = 0;
 float elbow_velocity = 0;
 
-float k = 0.01;
+float k = 0.04; //0.04;
 float d = 1;
 
 float shoulder_current = 0;
@@ -99,7 +99,8 @@ void loop() {
 
   current_shoulder_angle = initial_shoulder_angle;
   current_elbow_angle = initial_elbow_angle;
-  for(uint16_t i=0; i < 300; i++){
+  //for(uint16_t i=0; i < 300; i++){
+  while(1){
     // log telemetry
     shoulder.getVescValues();
     elbow.getVescValues();
@@ -121,20 +122,22 @@ void loop() {
     shoulder_current = k*(initial_shoulder_angle - current_shoulder_angle) + d*(-shoulder_velocity);
     elbow_current = k*(initial_elbow_angle - current_elbow_angle) + d*(-elbow_velocity);
 
-    if(shoulder_current > 30) shoulder_current = 30;
-    if(shoulder_current < -30) shoulder_current = -30;
-    if(elbow_current > 30) elbow_current = 30;
-    if(elbow_current < -30) elbow_current = -30;
+    if(shoulder_current > 70) shoulder_current = 70;
+    if(shoulder_current < -70) shoulder_current = -70;
+    if(elbow_current > 70) elbow_current = 70;
+    if(elbow_current < -70) elbow_current = -70;
 
-    //shoulder.setCurrent(shoulder_current);    
+    shoulder.setCurrent(-shoulder_current);    
     elbow.setCurrent(-elbow_current);
-    Serial.print(initial_elbow_angle);
+    Serial.print(initial_shoulder_angle);
     Serial.print(",");
-    Serial.print(current_elbow_angle);
+    Serial.print(current_shoulder_angle);
     Serial.print(",");
-    Serial.print(elbow_velocity);
+    Serial.print(shoulder_velocity);
     Serial.print(",");
-    Serial.println(elbow_current);
+    Serial.print(shoulder_current);
+    Serial.print(",");
+    Serial.println(shoulder.data.avgMotorCurrent);
     delay(10);
   }
   while(1);
