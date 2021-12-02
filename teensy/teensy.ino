@@ -15,19 +15,22 @@ VescUart::dataPackage th2_telemetry[dynamic_trajectory_length];
 Encoder th1_encoder(7,8);
 Encoder th2_encoder(5,6);
 
-int32_t th1_desired = 0;
-int32_t th2_desired = 0;
-int32_t previous_th1 = 0;
-int32_t previous_th2 = 0; 
+float th1_desired = 0;
+float th2_desired = 0;
+float previous_th1 = 0;
+float previous_th2 = 0; 
 
-int32_t th1 = 0;
-int32_t th2 = 0;
+float th1 = 0;
+float th2 = 0;
 
 float dth1 = 0;
 float dth2 = 0;
+float new_dth1 = 0;
+float new_dth2 = 0;
+float dth_alpha = 0.05;
 
-float k = 0.04; //0.04;
-float d = 0;
+float k = 0; //0.04;
+float d = 0.002;
 
 float th1_current = 0;
 float th2_current = 0;
@@ -78,34 +81,87 @@ void setup() {
 }
 
 void loop() {
-  /*
-  // send trajectory, obtain telemetry
-  Serial.println("Executing trajectory...");
-  for(uint16_t i=0; i < trajectory_length; i++) {
-    th1_vesc.getVescValues();
-    th2_vesc.getVescValues();
+  // if commanded to start the trajectory, then do so
+  if(Serial.available()) {
+    if(Serial.read() == 't') {
+      // execute trajectory
+      for(uint16_t i=0; i < dynamic_trajectory_length; i++) {
+        th1_vesc.getVescValues();
+        th2_vesc.getVescValues();
+        
+        // get positions
+        th1 = th1_encoder.read()*6.28/2048;
+        th2 = th2_encoder.read()*6.28/2048;
 
-    th1_telemetry[i] = th1_vesc.data;
-    th2_telemetry[i] = th2_vesc.data;
+        // get velocities, use exponential moving average filter
+        //new_dth1 = 100*(th1 - previous_th1);
+        //new_dth2 = 100*(th2 - previous_th2);
+        //dth1 = (dth_alpha * new_dth1) + (1.0 - dth_alpha) * dth1;
+        //dth2 = (dth_alpha * new_dth2) + (1.0 - dth_alpha) * dth2;
 
-    th1_vesc.setCurrent(th1_trajectory[i]);
-    th2_vesc.setCurrent(th2_trajectory[i]);
-    delay(10);
+        dth1 = 100*(th1 - previous_th1);
+        dth2 = 100*(th2 - previous_th2);
+        
+        previous_th1 = th1;
+        previous_th2 = th2;
+
+        // make impedance controller
+        th1_current = k*(th1_desired - th1) + d*(-dth1);
+        th2_current = k*(th2_desired - th2) + d*(-dth2);
+
+        // set hard currnet limit
+        if(th1_current >  current_limit) th1_current =  current_limit;
+        if(th1_current < -current_limit) th1_current = -current_limit;
+        if(th2_current >  current_limit) th2_current =  current_limit;
+        if(th2_current < -current_limit) th2_current = -current_limit;
+
+        //th1_vesc.setCurrent(-th1_current);    
+        th2_vesc.setCurrent(-th2_current);
+
+        Serial.print("th2:");
+        Serial.print(th2);
+        Serial.print(",");
+
+        Serial.print("dth2:");
+        Serial.print(dth2);
+        Serial.print(",");
+
+        Serial.print("th2_current:");
+        Serial.print(th2_current);
+        Serial.print(",");
+
+        Serial.print("th2_current_k_contribution:");
+        Serial.print(k*(th2_desired - th2));
+        Serial.print(",");
+
+        Serial.print("th2_current_d_contribution:");
+        Serial.println(d*(-dth2));
+
+
+        delay(10);
+      }
+      }
+    }
   }
-  */
 
   while(1){
     // log telemetry
     th1_vesc.getVescValues();
     th2_vesc.getVescValues();
     
-    // get positions and velocities
+    // get positions
     th1 = th1_encoder.read();
     th2 = th2_encoder.read();
-    
-    dth1 = 0.01*(th1 - previous_th1);
-    dth2 = 0.01*(th2 - previous_th2);
 
+    // get velocities, use exponential moving average filter
+    //new_dth1 = 100*(th1 - previous_th1);
+    //new_dth2 = 100*(th2 - previous_th2);
+    //dth1 = (dth_alpha * new_dth1) + (1.0 - dth_alpha) * dth1;
+    //dth2 = (dth_alpha * new_dth2) + (1.0 - dth_alpha) * dth2;
+
+    dth1 = 100*(th1 - previous_th1);
+    dth2 = 100*(th2 - previous_th2);
+    
     previous_th1 = th1;
     previous_th2 = th2;
 
@@ -119,20 +175,29 @@ void loop() {
     if(th2_current >  current_limit) th2_current =  current_limit;
     if(th2_current < -current_limit) th2_current = -current_limit;
 
-    th1_vesc.setCurrent(-th1_current);    
+    //th1_vesc.setCurrent(-th1_current);    
     th2_vesc.setCurrent(-th2_current);
 
-    Serial.print("th1:");
-    Serial.print(th1);
+    Serial.print("th2:");
+    Serial.print(th2);
     Serial.print(",");
 
-    Serial.print("dth1:");
-    Serial.print(dth1);
+    Serial.print("dth2:");
+    Serial.print(dth2);
     Serial.print(",");
 
-    Serial.print("th1_current:");
-    Serial.println(th1_current);
+    Serial.print("th2_current:");
+    Serial.print(th2_current);
+    Serial.print(",");
+
+    Serial.print("th2_current_k_contribution:");
+    Serial.print(k*(th2_desired - th2));
+    Serial.print(",");
+
+    Serial.print("th2_current_d_contribution:");
+    Serial.println(d*(-dth2));
+
+
     delay(10);
   }
-  while(1);
 }
