@@ -1,14 +1,14 @@
 function derive_everything()
 %% Define symbolics.
 name = 'jumping_leg';
-syms t y dy ddy th1 dth1 ddth1 th2 dth2 ddth2 tau1 tau2 Fy l c1 c2 m1 m2 mh I1 I2 g real
+syms t y dy ddy th1 dth1 ddth1 th2 dth2 ddth2 tau1 tau2 Fy l1 l2 c1 c2 m1 m2 mh I1 I2 g real
 
 q   = [y; th1; th2];        % generalized coordinates
 dq  = [dy; dth1; dth2];     % first time derivatives
 ddq = [ddy; ddth1; ddth2];  % second time derivatives
 u   = [tau1, tau2];         % control forces and moments
 Fc   = Fy;                  % constraint forces and moments
-p   = [l; c1; c2; m1; m2; mh; I1; I2; g];  % parameters
+p   = [l1; l2; c1; c2; m1; m2; mh; I1; I2; g];  % parameters
 
 %% Calculate kinematics.
 ihat = [1; 0; 0];
@@ -19,9 +19,9 @@ er2hat = cos(th1 + th2)*ihat + sin(th1 + th2) * jhat;
 
 rf = y*jhat;
 rcm1 = rf+c1*er1hat;
-rk = rf+l*er1hat;
+rk = rf+l1*er1hat;
 rcm2 = rk + c2*er2hat;
-rh = rk + l*er2hat;
+rh = rk + l2*er2hat;
 keypoints = [rh rk rf];
 
 %% Compute energetics.

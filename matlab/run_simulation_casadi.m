@@ -8,8 +8,8 @@ opti = casadi.Opti();
 
 % Declare Optimization variables
 ctrl.tf = opti.variable();    % Duration of control
-ctrl.T1  = opti.variable(5,1); % Control values for elbow torques
-ctrl.T2  = opti.variable(5,1); % Control values for shoulder torques
+ctrl.T1  = opti.variable(20,1); % Control values for elbow torques
+ctrl.T2  = opti.variable(20,1); % Control values for shoulder torques
 
 % Time discretization
 N.ctrl   = 50; % number of dynamics timesteps where ctrl is applied
@@ -36,11 +36,11 @@ opti.minimize(-COM(4,N.ctrl));
 %% Step 3: Add constraints
 % Bounding box on flight time/joint torques
 opti.subject_to(ctrl.tf >= 0.1);
-opti.subject_to(ctrl.tf <= 0.6);
-opti.subject_to(ctrl.T1 >= -2*ones(5,1));
-opti.subject_to(ctrl.T1 <= 2*ones(5,1) );
-opti.subject_to(ctrl.T2 >= -2*ones(5,1));
-opti.subject_to(ctrl.T2 <= 2*ones(5,1) );
+opti.subject_to(ctrl.tf <= 1);
+opti.subject_to(ctrl.T1 >= -5*ones(20,1));
+opti.subject_to(ctrl.T1 <= 5*ones(20,1) );
+opti.subject_to(ctrl.T2 >= -5*ones(20,1));
+opti.subject_to(ctrl.T2 <= 5*ones(20,1) );
 
 % Bounding box on leg angle
 for i = 1:N.ctrl
@@ -62,8 +62,8 @@ opti.solver('ipopt',p_opts);
 %% Step 4: Provide Initial Guess & Run the optimization
 % Initial guess
 opti.set_initial(ctrl.tf,0.35);
-opti.set_initial(ctrl.T1,[0. 1.0 1.0 1.0 1.0]);
-opti.set_initial(ctrl.T2,[0. 1.0 1.0 1.0 1.0]);
+opti.set_initial(ctrl.T1,[0. 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0]);
+opti.set_initial(ctrl.T2,[0. 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0]);
 
 sol = opti.solve();
 
