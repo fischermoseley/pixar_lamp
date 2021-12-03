@@ -17,25 +17,21 @@ Encoder th2_encoder(5,6);
 
 float th1_desired = 0;
 float th2_desired = 0;
-float previous_th1 = 0;
-float previous_th2 = 0;
-
 float th1 = 0;
 float th2 = 0;
+float previous_th1 = 0;
+float previous_th2 = 0;
 
 float dth1_desired = 0;
 float dth2_desired = 0;
 float dth1 = 0;
 float dth2 = 0;
-float new_dth1 = 0;
-float new_dth2 = 0;
-float dth_alpha = 0.05;
-
-float k = 0; //0.04;
-float d = 0.0005;
 
 float th1_current = 0;
 float th2_current = 0;
+
+float k = 4;// 0.5;
+float d = 0.07; // 0.07
 
 void send_telemetry_to_computer() {
   VescUart::dataPackage data;
@@ -104,6 +100,10 @@ void loop() {
         dth1 = 100*(th1 - previous_th1);
         dth2 = 100*(th2 - previous_th2);
 
+        // add weighting function, because bullshit
+        dth1 = dth1 * exp(-pow(dth1, 2)/100);
+        dth2 = dth2 * exp(-pow(dth2, 2)/25);
+
         previous_th1 = th1;
         previous_th2 = th2;
 
@@ -122,9 +122,21 @@ void loop() {
         if(th2_current >  current_limit) th2_current =  current_limit;
         if(th2_current < -current_limit) th2_current = -current_limit;
 
-        //th1_vesc.setCurrent(-th1_current);
+        th1_vesc.setCurrent(-th1_current);
         th2_vesc.setCurrent(-th2_current);
 
+        Serial.print("th1:");
+        Serial.print(th2);
+        Serial.print(",");
+
+        Serial.print("dth1:");
+        Serial.print(dth2);
+        Serial.print(",");
+
+        Serial.print("th1_current:");
+        Serial.print(th1_current);
+        Serial.print(",");
+        
         Serial.print("th2:");
         Serial.print(th2);
         Serial.print(",");
@@ -134,16 +146,7 @@ void loop() {
         Serial.print(",");
 
         Serial.print("th2_current:");
-        Serial.print(th2_current);
-        Serial.print(",");
-
-        Serial.print("th2_current_k_contribution:");
-        Serial.print(k*(th2_desired - th2));
-        Serial.print(",");
-
-        Serial.print("th2_current_d_contribution:");
-        Serial.println(d*(-dth2));
-
+        Serial.println(th2_current);
 
         delay(10);
       }
@@ -157,14 +160,18 @@ void loop() {
     th2_vesc.getVescValues();
 
     // get positions
-    th1 = th1_encoder.read();
-    th2 = th2_encoder.read();
+    th1 = th1_encoder.read()/5796.0; // heh this was totally experimental lol
+    th2 = th2_encoder.read()/5796.0;
 
     // get velocities, use exponential moving average filter
     dth1 = 100*(th1 - previous_th1);
     dth2 = 100*(th2 - previous_th2);
     previous_th1 = th1;
     previous_th2 = th2;
+
+    // add weighting function, because bullshit
+    dth1 = dth1 * exp(-pow(dth1, 2)/100);
+    dth2 = dth2 * exp(-pow(dth2, 2)/25);
 
     // make impedance controller
     th1_current = k*(th1_desired - th1) + d*(-dth1);
@@ -177,28 +184,32 @@ void loop() {
     if(th2_current < -current_limit) th2_current = -current_limit;
 
     // write current
-    th1_vesc.setCurrent(-th1_current);
-    th2_vesc.setCurrent(-th2_current);
+    //th1_vesc.setCurrent(-th1_current);
+    //th2_vesc.setCurrent(-th2_current);
 
     // print interesting bits
-    Serial.print("th2:");
-    Serial.print(th2);
-    Serial.print(",");
+      Serial.print("th1:");
+      Serial.print(th1);
+      Serial.print(",");
 
-    Serial.print("dth2:");
-    Serial.print(dth2);
-    Serial.print(",");
+      Serial.print("dth1:");
+      Serial.print(dth1);
+      Serial.print(",");
 
-    Serial.print("th2_current:");
-    Serial.print(th2_current);
-    Serial.print(",");
+      Serial.print("th1_current:");
+      Serial.print(th1_current);
+      Serial.print(",");
+      
+      Serial.print("th2:");
+      Serial.print(th2);
+      Serial.print(",");
 
-    Serial.print("th2_current_k_contribution:");
-    Serial.print(k*(th2_desired - th2));
-    Serial.print(",");
+      Serial.print("dth2:");
+      Serial.print(dth2);
+      Serial.print(",");
 
-    Serial.print("th2_current_d_contribution:");
-    Serial.println(d*(-dth2));
+      Serial.print("th2_current:");
+      Serial.println(th2_current);
 
     delay(10);
   }
