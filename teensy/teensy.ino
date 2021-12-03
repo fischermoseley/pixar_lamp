@@ -18,11 +18,13 @@ Encoder th2_encoder(5,6);
 float th1_desired = 0;
 float th2_desired = 0;
 float previous_th1 = 0;
-float previous_th2 = 0; 
+float previous_th2 = 0;
 
 float th1 = 0;
 float th2 = 0;
 
+float dth1_desired = 0;
+float dth2_desired = 0;
 float dth1 = 0;
 float dth2 = 0;
 float new_dth1 = 0;
@@ -30,7 +32,7 @@ float new_dth2 = 0;
 float dth_alpha = 0.05;
 
 float k = 0; //0.04;
-float d = 0.002;
+float d = 0.0005;
 
 float th1_current = 0;
 float th2_current = 0;
@@ -72,7 +74,7 @@ void setup() {
   // Setup VESC serial ports
   Serial1.begin(115200);
   Serial2.begin(115200);
-  
+
   while (!Serial) {;}
 
   // Define which ports to use as UART
@@ -88,7 +90,7 @@ void loop() {
       for(uint16_t i=0; i < dynamic_trajectory_length; i++) {
         th1_vesc.getVescValues();
         th2_vesc.getVescValues();
-        
+
         // get positions
         th1 = th1_encoder.read()*6.28/2048;
         th2 = th2_encoder.read()*6.28/2048;
@@ -101,13 +103,18 @@ void loop() {
 
         dth1 = 100*(th1 - previous_th1);
         dth2 = 100*(th2 - previous_th2);
-        
+
         previous_th1 = th1;
         previous_th2 = th2;
 
         // make impedance controller
-        th1_current = k*(th1_desired - th1) + d*(-dth1);
-        th2_current = k*(th2_desired - th2) + d*(-dth2);
+        th1_desired = th1_trajectory[i];
+        dth1_desired = dth1_trajectory[i];
+        th2_desired = th2_trajectory[i];
+        dth2_desired = dth2_trajectory[i];
+
+        th1_current = k*(th1_desired - th1) + d*(dth1_desired - dth1);
+        th2_current = k*(th2_desired - th2) + d*(dth2_desired - dth2);
 
         // set hard currnet limit
         if(th1_current >  current_limit) th1_current =  current_limit;
@@ -115,7 +122,7 @@ void loop() {
         if(th2_current >  current_limit) th2_current =  current_limit;
         if(th2_current < -current_limit) th2_current = -current_limit;
 
-        //th1_vesc.setCurrent(-th1_current);    
+        //th1_vesc.setCurrent(-th1_current);
         th2_vesc.setCurrent(-th2_current);
 
         Serial.print("th2:");
@@ -140,28 +147,22 @@ void loop() {
 
         delay(10);
       }
-      }
     }
   }
 
+  // otherwise just do normal impedance control
   while(1){
     // log telemetry
     th1_vesc.getVescValues();
     th2_vesc.getVescValues();
-    
+
     // get positions
     th1 = th1_encoder.read();
     th2 = th2_encoder.read();
 
     // get velocities, use exponential moving average filter
-    //new_dth1 = 100*(th1 - previous_th1);
-    //new_dth2 = 100*(th2 - previous_th2);
-    //dth1 = (dth_alpha * new_dth1) + (1.0 - dth_alpha) * dth1;
-    //dth2 = (dth_alpha * new_dth2) + (1.0 - dth_alpha) * dth2;
-
     dth1 = 100*(th1 - previous_th1);
     dth2 = 100*(th2 - previous_th2);
-    
     previous_th1 = th1;
     previous_th2 = th2;
 
@@ -175,9 +176,11 @@ void loop() {
     if(th2_current >  current_limit) th2_current =  current_limit;
     if(th2_current < -current_limit) th2_current = -current_limit;
 
-    //th1_vesc.setCurrent(-th1_current);    
+    // write current
+    th1_vesc.setCurrent(-th1_current);
     th2_vesc.setCurrent(-th2_current);
 
+    // print interesting bits
     Serial.print("th2:");
     Serial.print(th2);
     Serial.print(",");
@@ -196,7 +199,6 @@ void loop() {
 
     Serial.print("th2_current_d_contribution:");
     Serial.println(d*(-dth2));
-
 
     delay(10);
   }
