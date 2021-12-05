@@ -30,8 +30,8 @@ float dth2 = 0;
 float th1_current = 0;
 float th2_current = 0;
 
-float k = 40;// 0.5;
-float d = 0.7; // 0.07
+float k = 100;// 0.5;
+float d = 1; // 0.07
 
 void send_telemetry_to_computer() {
   VescUart::dataPackage data;
@@ -62,6 +62,38 @@ void send_telemetry_to_computer() {
   Serial.println("Telemetry sent.");
 }
 
+void print_state() {
+  Serial.print("th1:");
+  Serial.print(th1);
+  Serial.print(",");
+
+  Serial.print("th1_desired:");
+  Serial.print(th1_desired);
+  Serial.print(",");
+
+  Serial.print("dth1:");
+  Serial.print(dth1);
+  Serial.print(",");
+
+  Serial.print("th1_current:");
+  Serial.print(th1_current);
+  Serial.print(",");
+  
+  Serial.print("th2:");
+  Serial.print(th2);
+  Serial.print(",");
+
+  Serial.print("th2_desired:");
+  Serial.print(th2_desired);
+  Serial.print(",");
+
+  Serial.print("dth2:");
+  Serial.print(dth2);
+  Serial.print(",");
+
+  Serial.print("th2_current:");
+  Serial.println(th2_current);
+}
 
 void setup() {
   // Setup PC serial port
@@ -82,75 +114,161 @@ void loop() {
   // if commanded to start the trajectory, then do so
   if(Serial.available() > 0) {
     int received = Serial.read();
-    for(uint16_t i=0; i < dynamic_trajectory_length; i++) {
-      // log telemetry
-      th1_vesc.getVescValues();
-      th2_vesc.getVescValues();
 
-      // get positions
-      th1 = th1_encoder.read()/5796.0; // heh this was totally experimental lol
-      th2 = th2_encoder.read()/5796.0;
+    // run the trajectory forwards
+    if (received == 'f') {
+      for(uint16_t i=0; i < dynamic_trajectory_length; i++) {
+        // log telemetry
+        th1_vesc.getVescValues();
+        th2_vesc.getVescValues();
 
-      // get velocities, use exponential moving average filter
-      dth1 = 100*(th1 - previous_th1);
-      dth2 = 100*(th2 - previous_th2);
-      previous_th1 = th1;
-      previous_th2 = th2;
+        // get positions
+        th1 = th1_encoder.read()/5796.0; // heh this was totally experimental lol
+        th2 = th2_encoder.read()/5796.0;
 
-      // add weighting function, because bullshit
-      dth1 = dth1 * exp(-pow(dth1, 2)/100);
-      dth2 = dth2 * exp(-pow(dth2, 2)/25);
+        // get velocities, use exponential moving average filter
+        dth1 = 100*(th1 - previous_th1);
+        dth2 = 100*(th2 - previous_th2);
+        previous_th1 = th1;
+        previous_th2 = th2;
 
-      th1_desired = th1_trajectory[i];
-      th2_desired = th2_trajectory[i];
+        // add weighting function, because bullshit
+        dth1 = dth1 * exp(-pow(dth1, 2)/100);
+        dth2 = dth2 * exp(-pow(dth2, 2)/25);
 
-      // make impedance controller
-      th1_current = k*(th1_desired - th1) + d*(-dth1);
-      th2_current = k*(th2_desired - th2) + d*(-dth2);
+        th1_desired = th1_trajectory[i];
+        th2_desired = th2_trajectory[i];
+        dth1_desired = dth1_trajectory[i];
+        dth2_desired = dth2_trajectory[i];
 
-      // set hard currnet limit
-      if(th1_current >  current_limit) th1_current =  current_limit;
-      if(th1_current < -current_limit) th1_current = -current_limit;
-      if(th2_current >  current_limit) th2_current =  current_limit;
-      if(th2_current < -current_limit) th2_current = -current_limit;
+        // make impedance controller
+        th1_current = k*(th1_desired - th1) + d*(dth1_desired-dth1);
+        th2_current = k*(th2_desired - th2) + d*(dth2_desired-dth2);
 
-      // write current
-      th1_vesc.setCurrent(-th1_current);
-      th2_vesc.setCurrent(-th2_current);
+        // set hard currnet limit
+        if(th1_current >  current_limit) th1_current =  current_limit;
+        if(th1_current < -current_limit) th1_current = -current_limit;
+        if(th2_current >  current_limit) th2_current =  current_limit;
+        if(th2_current < -current_limit) th2_current = -current_limit;
 
-      // print interesting bits
-      Serial.print("th1:");
-      Serial.print(th1);
-      Serial.print(",");
+        // write current
+        th1_vesc.setCurrent(-th1_current);
+        th2_vesc.setCurrent(-th2_current);
 
-      Serial.print("th1_desired:");
-      Serial.print(th1_desired);
-      Serial.print(",");
+        // print interesting bits
+        print_state();
+        delay(10);
+      }
+    }
 
-      Serial.print("dth1:");
-      Serial.print(dth1);
-      Serial.print(",");
+    // run the trajectory backwards
+    if (received == 'b') {
+      for(uint16_t i=dynamic_trajectory_length - 1; i > 0; i--) {
+        // log telemetry
+        th1_vesc.getVescValues();
+        th2_vesc.getVescValues();
 
-      Serial.print("th1_current:");
-      Serial.print(th1_current);
-      Serial.print(",");
-      
-      Serial.print("th2:");
-      Serial.print(th2);
-      Serial.print(",");
+        // get positions
+        th1 = th1_encoder.read()/5796.0; // heh this was totally experimental lol
+        th2 = th2_encoder.read()/5796.0;
 
-      Serial.print("th2_desired:");
-      Serial.print(th2_desired);
-      Serial.print(",");
+        // get velocities, use exponential moving average filter
+        dth1 = 100*(th1 - previous_th1);
+        dth2 = 100*(th2 - previous_th2);
+        previous_th1 = th1;
+        previous_th2 = th2;
 
-      Serial.print("dth2:");
-      Serial.print(dth2);
-      Serial.print(",");
+        // add weighting function, because bullshit
+        dth1 = dth1 * exp(-pow(dth1, 2)/100);
+        dth2 = dth2 * exp(-pow(dth2, 2)/25);
 
-      Serial.print("th2_current:");
-      Serial.println(th2_current);
+        th1_desired = th1_trajectory[i];
+        th2_desired = th2_trajectory[i];
+        dth1_desired = dth1_trajectory[i];
+        dth2_desired = dth2_trajectory[i];
 
-      delay(10);
+        // make impedance controller
+        th1_current = k*(th1_desired - th1) + d*(dth1_desired-dth1);
+        th2_current = k*(th2_desired - th2) + d*(dth2_desired-dth2);
+
+        // set hard currnet limit
+        if(th1_current >  current_limit) th1_current =  current_limit;
+        if(th1_current < -current_limit) th1_current = -current_limit;
+        if(th2_current >  current_limit) th2_current =  current_limit;
+        if(th2_current < -current_limit) th2_current = -current_limit;
+
+        // write current
+        th1_vesc.setCurrent(-th1_current);
+        th2_vesc.setCurrent(-th2_current);
+
+        // print interesting bits
+        print_state();
+        delay(10);
+      }
+    }
+
+    // forwards quickly - ZOOM
+    if (received == 'z') {
+      for(uint16_t i=0; i < dynamic_trajectory_length; i=i+12) {
+        // log telemetry
+        th1_vesc.getVescValues();
+        th2_vesc.getVescValues();
+
+        // get positions
+        th1 = th1_encoder.read()/5796.0; // heh this was totally experimental lol
+        th2 = th2_encoder.read()/5796.0;
+
+        // get velocities, use exponential moving average filter
+        dth1 = 100*(th1 - previous_th1);
+        dth2 = 100*(th2 - previous_th2);
+        previous_th1 = th1;
+        previous_th2 = th2;
+
+        // add weighting function, because bullshit
+        dth1 = dth1 * exp(-pow(dth1, 2)/100);
+        dth2 = dth2 * exp(-pow(dth2, 2)/25);
+
+        th1_desired = th1_trajectory[i];
+        th2_desired = th2_trajectory[i];
+        dth1_desired = dth1_trajectory[i] * 12.0;
+        dth2_desired = dth2_trajectory[i] * 12.0;
+
+        // make impedance controller
+        th1_current = k*(th1_desired - th1) + d*(dth1_desired-dth1);
+        th2_current = k*(th2_desired - th2) + d*(dth2_desired-dth2);
+
+        // set hard currnet limit
+        if(th1_current >  current_limit) th1_current =  current_limit;
+        if(th1_current < -current_limit) th1_current = -current_limit;
+        if(th2_current >  current_limit) th2_current =  current_limit;
+        if(th2_current < -current_limit) th2_current = -current_limit;
+
+        // write current
+        th1_vesc.setCurrent(-th1_current);
+        th2_vesc.setCurrent(-th2_current);
+
+        // print interesting bits
+        print_state();
+        delay(10);
+      }
+    }
+
+    // move foot to starting position
+    if (received == 's') {
+      th1_desired = th1_trajectory[0];
+      th2_desired = th2_trajectory[0];
+    }
+
+    // move foot to ending position
+    if (received == 'e') {
+      th1_desired = th1_trajectory[dynamic_trajectory_length - 1];
+      th2_desired = th2_trajectory[dynamic_trajectory_length - 1];
+    }
+
+    // move foot to calibration position
+    if (received == 'c') {
+      th1_desired = 0;
+      th2_desired = 0;
     }
   }
 
@@ -188,36 +306,6 @@ void loop() {
   th2_vesc.setCurrent(-th2_current);
 
   // print interesting bits
-  Serial.print("th1:");
-  Serial.print(th1);
-  Serial.print(",");
-
-  Serial.print("th1_desired:");
-  Serial.print(th1_desired);
-  Serial.print(",");
-
-  Serial.print("dth1:");
-  Serial.print(dth1);
-  Serial.print(",");
-
-  Serial.print("th1_current:");
-  Serial.print(th1_current);
-  Serial.print(",");
-  
-  Serial.print("th2:");
-  Serial.print(th2);
-  Serial.print(",");
-
-  Serial.print("th2_desired:");
-  Serial.print(th2_desired);
-  Serial.print(",");
-
-  Serial.print("dth2:");
-  Serial.print(dth2);
-  Serial.print(",");
-
-  Serial.print("th2_current:");
-  Serial.println(th2_current);
-
+  print_state();
   delay(10);
 }
