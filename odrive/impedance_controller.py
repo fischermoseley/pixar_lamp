@@ -116,15 +116,21 @@ class pixar_lamp():
         return np.array(log)
 
     def run(self, duration = 0):
+        log = []
+        # otherwise please log the data to numpy array
         if duration:
             for _ in range(round(duration*100)):
                 output = self.th1_controller.run(verbose=True, pallete='RYG')
                 output += "   |   "
                 output += self.th2_controller.run(verbose=True, pallete='BIV')
                 output += "\n"
+
+                log.append(self.th1_controller.get_log() + self.th2_controller.get_log())
                 print(output)
                 sleep(0.010)
 
+            return np.array(log)
+        # if you don't apply a duration, do not log
         else:
             while(True):
                 output = self.th1_controller.run(verbose=True, pallete='RYG')
@@ -155,11 +161,7 @@ class pixar_lamp():
         return np.array(trajectory)
 
 ## Setup odrive and impedance controllers
-lamp = pixar_lamp(odrive.find_any(), (200, 4), (300, 6))
-
-# load trajectory from file
-trajectory = np.load('trajectory.npy')
-
+lamp = pixar_lamp(odrive.find_any(), (150, 3), (250, 5))
 
 # get calibration position
 input("Press enter to set calibration position.")
@@ -167,31 +169,50 @@ lamp.set_offsets()
 print(f"Calibration position set to th1: {lamp.th1_controller.th_offset}, th2: {lamp.th2_controller.th_offset}")
 lamp.set_pose_calibration()
 
-#input("Press enter to record trajectory")
-#np.save('trajectory.npy', lamp.record_trajectory(3))
-#lamp.run()
+# uncomment to impedance control on startup
+output = lamp.run(5)
 
 
-input(f"Press any key to go to next position")
-lamp.th1_controller.k = 20
-lamp.th1_controller.d = 0.1
-lamp.th2_controller.k = 20
-lamp.th2_controller.d = 0.1
-lamp.set_pose(trajectory[0])
-lamp.run(3)
-lamp.th1_controller.k = 200
-lamp.th1_controller.d = 4
-lamp.th2_controller.k = 300
-lamp.th2_controller.d = 6
-lamp.run(3)
+# uncomment to record trajectory
+# input("Press enter to record trajectory")
+# np.save('trajectory.npy', lamp.record_trajectory(3))
+# lamp.run()
+
+# uncomment to play trajectory
+# load trajectory from file
+# trajectory = np.load('trajectory.npy')
+
+# input(f"Press any key to go to next position")
+# lamp.th1_controller.k = 20
+# lamp.th1_controller.d = 0.1
+# lamp.th2_controller.k = 20
+# lamp.th2_controller.d = 0.1
+# lamp.set_pose(trajectory[0])
+# lamp.run(3)
+# lamp.th1_controller.k = 200
+# lamp.th1_controller.d = 4
+# lamp.th2_controller.k = 300
+# lamp.th2_controller.d = 6
+# lamp.run(3)
 
 
 # execute trajectory
-output = lamp.execute_trajectory(trajectory)
-lamp.run(3)
+# output = lamp.execute_trajectory(trajectory)
+# lamp.run(3)
 
+#uncomment always
 lamp.stop_everything()
 
+#uncomment to save a CSV log of a run
+from datetime import datetime
+now = str(datetime.now())
+now = now.replace(" ", "_")
+now = now.replace(":", "_")
+now = now.replace(".", "_")
+fname = "outputs/"+now+".txt"
+np.savetxt(fname, output, delimiter=',', header='th1, dth1, tau1_cmd, tau1, th2, dth2, tau2_cmd, tau2')
+
+#uncomment for plots
 import matplotlib.pyplot as plt
 plt.plot(output[:,0], label = 'th1')
 plt.plot(output[:,1], label = 'dth1')
