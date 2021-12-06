@@ -161,7 +161,8 @@ class pixar_lamp():
         return np.array(trajectory)
 
 ## Setup odrive and impedance controllers
-lamp = pixar_lamp(odrive.find_any(), (150, 3), (250, 5))
+# gains for landing controller (ish)
+lamp = pixar_lamp(odrive.find_any(), (125, 2), (200, 4))
 
 # get calibration position
 input("Press enter to set calibration position.")
@@ -171,7 +172,6 @@ lamp.set_pose_calibration()
 
 # uncomment to impedance control on startup
 output = lamp.run(5)
-
 
 # uncomment to record trajectory
 # input("Press enter to record trajectory")
