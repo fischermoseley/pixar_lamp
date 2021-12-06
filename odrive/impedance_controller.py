@@ -3,29 +3,6 @@ import numpy as np
 from time import sleep
 from colorama import Fore, Style
 
-def print_odrive_config(odrv, axis):
-    print(f"max current: {axis.motor.config.current_lim}")
-    print(f"regen current: {odrv.config.dc_max_negative_current}")
-    print(f"calibration current: {axis.motor.config.calibration_current}")
-    print(f"max velocity: {axis.controller.config.vel_limit}")
-    print(f"pole pairs: {axis.motor.config.pole_pairs}")
-    print(f"torque constant: {axis.motor.config.torque_constant}")
-    print(f"motor type: {axis.motor.config.motor_type}")
-    print(f"encoder cpr: {axis.encoder.config.cpr}")
-
-def configure_odrive(axis):
-    axis.requested_state = AXIS_STATE_MOTOR_CALIBRATION
-    sleep(5)
-    assert(axis.motor.is_calibrated)
-
-    axis.encoder.config.use_index = True
-    sleep(5)
-    assert(axis.error == 0)
-
-    axis.encoder.config.pre_calibrated = True
-    axis.config.startup_encoder_index_search = True
-    axis.motor.config.pre_calibrated = True
-
 class impedance_controller():
     def __init__(self, axis, k=0, d=0):
         self.axis = axis
@@ -86,96 +63,134 @@ class impedance_controller():
     def get_log(self):
         return [self.th - self.th_offset, self.dth, self.current]
 
-## Setup odrive and impedance controllers
+class pixar_lamp():
+    def __init__(self, odrv, th1_gains, th2_gains):
+        self.th1_controller = impedance_controller(odrv.axis0, k=th1_gains[0], d=th1_gains[1])
+        self.th2_controller = impedance_controller(odrv.axis1, k=th2_gains[0], d=th2_gains[1])
+        self.th1_controller.start_current_control()
+        self.th2_controller.start_current_control()
 
-odrv = odrive.find_any()
-# th1_controller = impedance_controller(odrv.axis0, k=0, d=0)
-# th2_controller = impedance_controller(odrv.axis1, k=0, d=0)
-th1_controller = impedance_controller(odrv.axis0, k=200, d=4)
-th2_controller = impedance_controller(odrv.axis1, k=300, d=6)
-th1_controller.start_current_control()
-th2_controller.start_current_control()
+        ## Register exit handler to stop odrives at program exit
+        atexit.register(self.stop_everything)
 
-def set_pose(pose):
-    th1_controller.th_desired = np.array(pose)[0]
-    th1_controller.dth_desired = np.array(pose)[1]
-    th2_controller.th_desired = np.array(pose)[2]
-    th2_controller.dth_desired = np.array(pose)[3]
+    def set_offsets(self):
+        self.th1_controller.set_offset()
+        self.th2_controller.set_offset()
 
-def set_pose_calibration():
-    set_pose([0, 0, 0, 0])
+    def set_pose(self, pose):
+        np_pose = np.array(pose)
+        self.th1_controller.th_desired = np_pose[0]
+        self.th1_controller.dth_desired = np_pose[1]
+        self.th2_controller.th_desired = np_pose[2]
+        self.th2_controller.dth_desired = np_pose[3]
 
-def set_pose_stance():
-    set_pose([-0.587, 0, 0.292, 0])
+    def set_pose_calibration(self):
+        self.set_pose([0, 0, 0, 0])
 
-def set_pose_preflight():
-    set_pose([0.102, 0, 0.518, 0])
+    def set_pose_stance(self):
+        self.set_pose([-0.587, 0, 0.292, 0])
 
-## Register exit handler to stop odrives at program exit
+    def set_pose_preflight(self):
+        self.set_pose([0.102, 0, 0.518, 0])
 
-def stop_everything():
-    th1_controller.stop_current_control()
-    th2_controller.stop_current_control()
-    print("\nHard abort. Didn't feel like letting me down gently, didn't ya?")
+    def stop_everything(self):
+        self.th1_controller.stop_current_control()
+        self.th2_controller.stop_current_control()
 
-atexit.register(stop_everything)
+        print("\nHard abort. Didn't feel like letting me down gently, didn't ya?")
 
+    def execute_trajectory(self, trajectory):
+        log = []
+        for pose in trajectory:
+            self.set_pose(pose)
+            output = self.th1_controller.run(verbose=True, pallete='RYG')
+            output += "   |   "
+            output += self.th2_controller.run(verbose=True, pallete='BIV')
+            output += "\n"
 
-def execute_trajectory(trajectory):
-    log = []
-    for pose in trajectory:
-        set_pose(pose)
-        output = th1_controller.run(verbose=True, pallete='RYG')
-        output += "   |   "
-        output += th2_controller.run(verbose=True, pallete='BIV')
-        output += "\n"
+            log.append(self.th1_controller.get_log() + self.th2_controller.get_log())
+            print(output)
 
-        log.append(th1_controller.get_log() + th2_controller.get_log())
-        print(output)
+            sleep(0.010)
+        
+        return np.array(log)
 
-        sleep(0.010)
-    
-    return np.array(log)
+    def run(self, duration = 0):
+        if duration:
+            for _ in range(round(duration*100)):
+                output = self.th1_controller.run(verbose=True, pallete='RYG')
+                output += "   |   "
+                output += self.th2_controller.run(verbose=True, pallete='BIV')
+                output += "\n"
+                print(output)
+                sleep(0.010)
 
-def run(duration = 0):
-    if duration:
+        else:
+            while(True):
+                output = self.th1_controller.run(verbose=True, pallete='RYG')
+                output += "   |   "
+                output += self.th2_controller.run(verbose=True, pallete='BIV')
+                output += "\n"
+                print(output)
+                sleep(0.010)
+
+    def record_trajectory(self, duration):
+        self.th1_controller.k = 0
+        self.th1_controller.d = 0
+        self.th2_controller.k = 0
+        self.th2_controller.d = 0
+
+        trajectory = []
         for _ in range(round(duration*100)):
-            output = th1_controller.run(verbose=True, pallete='RYG')
+            output = self.th1_controller.run(verbose=True, pallete='RYG')
             output += "   |   "
-            output += th2_controller.run(verbose=True, pallete='BIV')
+            output += self.th2_controller.run(verbose=True, pallete='BIV')
             output += "\n"
             print(output)
+
+            trajectory.append(self.th1_controller.get_state_vector() + self.th2_controller.get_state_vector())
+
             sleep(0.010)
 
-    else:
-        while(True):
-            output = th1_controller.run(verbose=True, pallete='RYG')
-            output += "   |   "
-            output += th2_controller.run(verbose=True, pallete='BIV')
-            output += "\n"
-            print(output)
-            sleep(0.010)
+        return np.array(trajectory)
 
+## Setup odrive and impedance controllers
+lamp = pixar_lamp(odrive.find_any(), (200, 4), (300, 6))
+
+# load trajectory from file
 trajectory = np.load('trajectory.npy')
+
 
 # get calibration position
 input("Press enter to set calibration position.")
-th1_controller.set_offset()
-th2_controller.set_offset()
-print(f"Calibration position set to th1: {th1_controller.th_offset}, th2: {th2_controller.th_offset}")
-input()
-th1_controller.k = 20
-th2_controller.k = 20
-set_pose(trajectory[0])
-run(3)
-th1_controller.k = 200
-th2_controller.k = 300
-run(3)
+lamp.set_offsets()
+print(f"Calibration position set to th1: {lamp.th1_controller.th_offset}, th2: {lamp.th2_controller.th_offset}")
+lamp.set_pose_calibration()
 
-output = execute_trajectory(trajectory)
-run(3)
+#input("Press enter to record trajectory")
+#np.save('trajectory.npy', lamp.record_trajectory(3))
+#lamp.run()
 
-stop_everything()
+
+input(f"Press any key to go to next position")
+lamp.th1_controller.k = 20
+lamp.th1_controller.d = 0.1
+lamp.th2_controller.k = 20
+lamp.th2_controller.d = 0.1
+lamp.set_pose(trajectory[0])
+lamp.run(3)
+lamp.th1_controller.k = 200
+lamp.th1_controller.d = 4
+lamp.th2_controller.k = 300
+lamp.th2_controller.d = 6
+lamp.run(3)
+
+
+# execute trajectory
+output = lamp.execute_trajectory(trajectory)
+lamp.run(3)
+
+lamp.stop_everything()
 
 import matplotlib.pyplot as plt
 plt.plot(output[:,0], label = 'th1')
@@ -185,32 +200,5 @@ plt.plot(output[:,3], label = 'th2')
 plt.plot(output[:,4], label = 'dth2')
 plt.plot(output[:,5], label = 'u2')
 plt.legend()
+plt.savefig('outputs/trajectory.png')
 plt.show()
-
-
-
-
-# want to record trajectory after we push the button
-# input("ready to record trajectory. press enter to begin recording.")
-# trajectory = []
-# for _ in range(300):
-#     output = th1_controller.run(verbose=True, pallete='RYG')
-#     output += "   |   "
-#     output += th2_controller.run(verbose=True, pallete='BIV')
-#     output += "\n"
-#     print(output)
-
-#     trajectory.append(th1_controller.get_state_vector() + th2_controller.get_state_vector())
-
-#     sleep(0.010)
-
-
-
-# juicy bits
-# set_pose_preflight()
-#run(3)
-#set_pose_stance()
-#run()
-
-#trajectory = np.array(trajectory)
-#np.save('trajectory.npy', trajectory)
