@@ -61,7 +61,7 @@ class impedance_controller():
         return [self.th - self.th_offset, self.dth]
     
     def get_log(self):
-        return [self.th - self.th_offset, self.dth, self.current]
+        return [self.th - self.th_offset, self.dth, self.current, self.axis.motor.current_control.Iq_measured]
 
 class pixar_lamp():
     def __init__(self, odrv, th1_gains, th2_gains):
@@ -195,10 +195,12 @@ lamp.stop_everything()
 import matplotlib.pyplot as plt
 plt.plot(output[:,0], label = 'th1')
 plt.plot(output[:,1], label = 'dth1')
-plt.plot(output[:,2], label = 'u1')
-plt.plot(output[:,3], label = 'th2')
-plt.plot(output[:,4], label = 'dth2')
-plt.plot(output[:,5], label = 'u2')
+plt.plot(output[:,2], label = 'u1_commanded')
+plt.plot(output[:,3], label = 'u1_received')
+plt.plot(output[:,4], label = 'th2')
+plt.plot(output[:,5], label = 'dth2')
+plt.plot(output[:,6], label = 'u2_commanded')
+plt.plot(output[:,7], label = 'u2_received')
 plt.legend()
 plt.savefig('outputs/trajectory.png')
 plt.show()
