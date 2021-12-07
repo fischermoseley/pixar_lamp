@@ -112,10 +112,10 @@ class pixar_lamp():
             print(output)
 
             sleep(0.010)
-        
+
         return np.array(log)
 
-    def run(self, duration = 0):
+    def run(self, duration = 0, detection_threshold = 20):
         log = []
         # otherwise please log the data to numpy array
         if duration:
@@ -137,14 +137,18 @@ class pixar_lamp():
                 output += "   |   "
                 output += self.th2_controller.run(verbose=True, pallete='BIV')
                 output += "\n"
+
+                # if self.th1_controller.get_log()[-1] > detection_threshold: #some initial ideas on contact detection 
+                #     print("CONTACT!")
+
                 print(output)
                 sleep(0.010)
 
     def record_trajectory(self, duration):
-        self.th1_controller.k = 0
-        self.th1_controller.d = 0
-        self.th2_controller.k = 0
-        self.th2_controller.d = 0
+        self.th1_controller.k = 100
+        self.th1_controller.d = 1
+        self.th2_controller.k = 150
+        self.th2_controller.d = 2
 
         trajectory = []
         for _ in range(round(duration*100)):
@@ -162,7 +166,7 @@ class pixar_lamp():
 
 ## Setup odrive and impedance controllers
 # gains for landing controller (ish)
-lamp = pixar_lamp(odrive.find_any(), (125, 2), (200, 4))
+lamp = pixar_lamp(odrive.find_any(), (100, 1), (150, 2))
 
 # get calibration position
 input("Press enter to set calibration position.")
@@ -171,34 +175,35 @@ print(f"Calibration position set to th1: {lamp.th1_controller.th_offset}, th2: {
 lamp.set_pose_calibration()
 
 # uncomment to impedance control on startup
-output = lamp.run(5)
+# output = lamp.run(5)
+# lamp.run()
 
 # uncomment to record trajectory
 # input("Press enter to record trajectory")
-# np.save('trajectory.npy', lamp.record_trajectory(3))
+# np.save('trajectory.npy', lamp.record_trajectory(10))
 # lamp.run()
 
 # uncomment to play trajectory
-# load trajectory from file
-# trajectory = np.load('trajectory.npy')
+#load trajectory from file
+trajectory = np.load('trajectory.npy')
 
-# input(f"Press any key to go to next position")
-# lamp.th1_controller.k = 20
-# lamp.th1_controller.d = 0.1
-# lamp.th2_controller.k = 20
-# lamp.th2_controller.d = 0.1
-# lamp.set_pose(trajectory[0])
-# lamp.run(3)
-# lamp.th1_controller.k = 200
-# lamp.th1_controller.d = 4
-# lamp.th2_controller.k = 300
-# lamp.th2_controller.d = 6
-# lamp.run(3)
+input(f"Press any key to go to next position")
+lamp.th1_controller.k = 20
+lamp.th1_controller.d = 0.1
+lamp.th2_controller.k = 20
+lamp.th2_controller.d = 0.1
+lamp.set_pose(trajectory[0])
+lamp.run(3)
+lamp.th1_controller.k = 100
+lamp.th1_controller.d = 1
+lamp.th2_controller.k = 150
+lamp.th2_controller.d = 2
+lamp.run(3)
 
 
 # execute trajectory
-# output = lamp.execute_trajectory(trajectory)
-# lamp.run(3)
+output = lamp.execute_trajectory(trajectory)
+lamp.run(3)
 
 #uncomment always
 lamp.stop_everything()
