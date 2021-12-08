@@ -185,7 +185,7 @@ lamp.set_pose_calibration()
 
 # uncomment to play trajectory
 #load trajectory from file
-trajectory = np.load('trajectory.npy')
+trajectory = np.load('working_jump.npy')
 
 input(f"Press any key to go to next position")
 lamp.th1_controller.k = 20
