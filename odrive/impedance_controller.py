@@ -99,23 +99,26 @@ class pixar_lamp():
 
         print("\nHard abort. Didn't feel like letting me down gently, didn't ya?")
 
-    def execute_trajectory(self, trajectory):
+    #note this function can scale the speed of the trajectory
+    def execute_trajectory(self, trajectory, scale=1.0):
         log = []
         for pose in trajectory:
+            pose[1] = pose[1]*scale
+            pose[3] = pose[3]*scale
             self.set_pose(pose)
             output = self.th1_controller.run(verbose=True, pallete='RYG')
             output += "   |   "
             output += self.th2_controller.run(verbose=True, pallete='BIV')
             output += "\n"
-
+            #log data
             log.append(self.th1_controller.get_log() + self.th2_controller.get_log())
             print(output)
-
-            sleep(0.010)
+            #sleep for the right amount of time
+            sleep(0.010/scale)
 
         return np.array(log)
 
-    def run(self, duration = 0, detection_threshold = 20):
+    def run(self, duration = 0):
         log = []
         # otherwise please log the data to numpy array
         if duration:
@@ -137,9 +140,6 @@ class pixar_lamp():
                 output += "   |   "
                 output += self.th2_controller.run(verbose=True, pallete='BIV')
                 output += "\n"
-
-                # if self.th1_controller.get_log()[-1] > detection_threshold: #some initial ideas on contact detection 
-                #     print("CONTACT!")
 
                 print(output)
                 sleep(0.010)
