@@ -2,8 +2,7 @@ function movie = gen_movie(t, q)
     x1 = q(1,:);
     x2 = q(2,:);
     
-    vw = VideoWriter('gottem.avi');
-    vw.Quality = 100;
+    vw = VideoWriter('gottem.avi', 'Uncompressed AVI');
     vw.FrameRate = 60;
     open(vw);
     
