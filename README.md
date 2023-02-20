@@ -1,4 +1,4 @@
-# PixarLamp
+# pixar_lamp
 
 Design of a physical lamp that accurately matches the dynamics in Pixar's Luxo Jr. animation. Completed as a final project for MIT's `2.74 - Bioinspired Robotics` class. Simulation done in Drake, CAD in Fusion 360, and crying in banana lounge.
 
